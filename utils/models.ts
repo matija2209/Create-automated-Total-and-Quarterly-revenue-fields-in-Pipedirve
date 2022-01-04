@@ -17,7 +17,24 @@ const totalRevenueSchema = new Schema({
 { timestamps: true }
 )
 
+const quarterlyRevenueSchema = new Schema({
+    orgId:{
+        type:Number,
+        required:true,
+        unique:true
+    },
+    value:{
+        type:Number,
+    },
+    count:{
+        type:Number,
+    }
+},
+{ timestamps: true }
+)
+
 const totalRevenueModel = mongoose.model('totalRev',totalRevenueSchema)
+const quarterlyRevenueModel = mongoose.model('quarterlyRev',quarterlyRevenueSchema)
 
 
-module.exports = {totalRevenueModel}
+module.exports = {totalRevenueModel,quarterlyRevenueModel}

@@ -10,6 +10,8 @@ var moment = require('moment')
 const dbURI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0.nwtcd.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`
 mongoose.connect(dbURI)
 
+export type filterType = 'totalRevenueModel' | 'quarterlyRevenueModel'
+
 const clearIrrelevantKeysFromDealObj = (deals:[]) => { 
     return deals.map((deal:any)=>{
         return {
@@ -20,8 +22,15 @@ const clearIrrelevantKeysFromDealObj = (deals:[]) => {
     })
 }
 
-const filterDealsByDate = (deals:[])=>{
-    return deals.filter((deal:any)=>moment(deal.won_time) > moment().subtract(2, 'years')) 
+const filterDealsByDate = (deals:[],filterType:filterType)=>{
+    switch (filterType) {
+        case 'totalRevenueModel':
+            return deals.filter((deal:any)=>moment(deal.won_time) > moment().subtract(2, 'years')) 
+        case 'quarterlyRevenueModel':
+            return deals.filter((deal:any)=>moment(deal.won_time).year() === moment().year() && moment(deal.won_time).quarter() === moment().quarter()) 
+        default:
+            break;
+    }
 }
 
 const sumDealsValuesPerOrgId = (deals:[{orgId:String}])=>{
@@ -48,17 +57,16 @@ const sumDealsValuesPerOrgId = (deals:[{orgId:String}])=>{
     .filter((org:any)=>org.orgId)
 }
 
-const getTotalRevPerOrgId = (deals:[])=>{
+const getTotalRevPerOrgId = (deals:[],filterType:filterType) => {
     const compose = (f:any,g:any) => (...args:any) => f(g(...args))
     const manipulateDeals = (...fns:any)=>{
         return fns.reduce(compose)
     }
-
     const readyData = manipulateDeals(
         sumDealsValuesPerOrgId,
         clearIrrelevantKeysFromDealObj,
         filterDealsByDate,
-    )(deals)
+    )(deals,filterType)
     return readyData
 }
 
@@ -93,13 +101,58 @@ const processOutdatedEntries = async (mongoData:any)=>{
     const toRemove = mongoData.filter((record:any)=>{
         return moment(mongoData[0].updatedAt) < moment().subtract(30,'d')
     })
+    // THIS NEEDS TO BE UPDATED
     for (const doc of toRemove){
-        await deleteDocument(doc._id)
+        await deleteDocument(doc._id,'totalRevenueModel')
         await editPipedriveObjects({endpoint:'organizations',method:'PUT',pId:doc.orgId,data:{
             '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':0
             }
         })
         await delay(100)
+    }
+}
+
+const updatePdField = async (org:any,filterType:filterType)=>{
+    await delay(100)
+    switch (filterType) {
+        case 'totalRevenueModel':
+            await editPipedriveObjects({endpoint:'organizations',method:'PUT',pId:org.orgId,data:{
+                '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':org.value
+                }
+            })
+            break;
+        case 'quarterlyRevenueModel':
+            await editPipedriveObjects({endpoint:'organizations',method:'PUT',pId:org.orgId,data:{
+                '116b12f68bdadc102aed71c5f96db5cd1c3afd62':org.value
+                }
+            })
+            break
+        default:
+            break;
+    }
+    console.log(`- updated org ${org.orgId} total revenue with value ${org.value}EUR`);
+    return
+}
+
+const createNewEntries = async (newEntriesToBeSavedInMongo:any,filterType:filterType)=>{
+    
+    for (const org of newEntriesToBeSavedInMongo){
+        updatePdField(org,filterType)
+        insertDocument(org,filterType)
+    }        
+}
+
+const updateEntries = async (existingOrgsThatNeedUpdate:any,filterType:filterType)=>{
+    for (const org of existingOrgsThatNeedUpdate){
+        updatePdField(org,filterType)
+        updateDocument(
+            org.id,
+            {
+                value:org.value,
+                count:org.count
+            },
+            filterType
+        )
     }
 }
 
@@ -113,36 +166,23 @@ const main = async () =>{
             status:"won"
         }
     })
-    const quarterlyRevenue = 2
-    const totalRevenue = getTotalRevPerOrgId(deals)
-    
-    const dataFromMongo = await getTotalRevDataFromMongo()
-    await processOutdatedEntries(dataFromMongo)
-    const {existingOrgsThatNeedUpdate,newEntriesToBeSavedInMongo} = getOrgsThatNeedsUpdating(dataFromMongo,totalRevenue)
-    
-    // Insert new documents
-    for (const org of newEntriesToBeSavedInMongo){
-        await editPipedriveObjects({endpoint:'organizations',method:'PUT',pId:org.orgId,data:{
-            '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':org.value
-        }
-        })
-        await delay(100)
-        console.log(`- updated org ${org.orgId} total revenue with value ${org.value}EUR`);
-        insertDocument(org)
-    }
+    debugger
+    const toDo:Array<filterType> = [
+        'quarterlyRevenueModel',
+        'totalRevenueModel'
+    ]
+    for (const field of toDo){
+        const totalRevenue = getTotalRevPerOrgId(deals,field)
+        const dataFromMongo = await getTotalRevDataFromMongo(field)
+        await processOutdatedEntries(dataFromMongo)
+        const {existingOrgsThatNeedUpdate,newEntriesToBeSavedInMongo} = getOrgsThatNeedsUpdating(dataFromMongo,totalRevenue)
+        debugger
 
-    // Update existing documents
-    for (const org of existingOrgsThatNeedUpdate){
-        await editPipedriveObjects({endpoint:'organizations',method:'PUT',pId:org.orgId,data:{
-            '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':org.value
-            }
-        })
-        await delay(100)
-        console.log(`- updated org ${org.orgId} total revenue with value ${org.value}EUR`);
-        updateDocument(org.id,{
-            value:org.value,
-            count:org.count
-        })
+        // Insert new documents
+        createNewEntries(newEntriesToBeSavedInMongo,field)
+    
+        // Update existing documents
+        updateEntries(existingOrgsThatNeedUpdate,field)
     }
     return
 }
@@ -151,7 +191,10 @@ function run_async () {
     main().then(()=>{
         console.log("Finished")
         process.exit()
-    }, run_async.bind(null));
+    }, run_async.bind(null)).catch((err)=>{
+        console.log(err);
+        
+    })
     
 }
 

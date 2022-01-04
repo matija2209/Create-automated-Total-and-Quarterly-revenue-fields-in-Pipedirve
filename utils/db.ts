@@ -1,29 +1,61 @@
 import { ObjectId } from "bson";
-
+import {filterType} from "../app"
 const models = require('./models')
 const ObjectId = require('mongoose').Types.ObjectId; 
 
-const getTotalRevDataFromMongo = async ()=>{
-    const pdDealsFromMongo = await models.totalRevenueModel.find({}).exec();
-    return pdDealsFromMongo.map((de:any)=>de.toObject())
+const getTotalRevDataFromMongo = async (filterType:filterType)=>{
+    switch (filterType) {
+        case 'totalRevenueModel':
+            const tRev = await models.totalRevenueModel.find({}).exec();
+            return tRev.map((de:any)=>de.toObject())
+        case 'quarterlyRevenueModel':
+            const qRevenue = await models.quarterlyRevenueModel.find({}).exec();
+            return qRevenue.map((de:any)=>de.toObject())
+        default:
+            break;
+    }
 }
 
-const updateDocument = async (_id:ObjectId,data:{}):Promise<void> =>{
+
+const updateDocument = async (_id:ObjectId,data:{},modelName:'totalRevenueModel' | 'quarterlyRevenueModel'):Promise<void> =>{
     const conditions = {_id}
     const dateToUpdate =  {
         $set: {...data}
     }
-    const updateRecord = await models.totalRevenueModel.updateOne(conditions,dateToUpdate,{
-        upsert:false,
-        strict:false
+    switch (modelName) {
+        case 'totalRevenueModel':
+            await models.totalRevenueModel.updateOne(conditions,dateToUpdate,{
+                upsert:false,
+                strict:false
+                }
+            )
+            break;
+        case 'quarterlyRevenueModel':
+            await models.quarterlyRevenueModel.updateOne(conditions,dateToUpdate,{
+                upsert:false,
+                strict:false
+                }
+            )
+        default:
+            break;
     }
-    )
 }
 
-const insertDocument = (data:{})=>{
+const insertDocument = (data:{},modelName:'totalRevenueModel' | 'quarterlyRevenueModel')=>{
     try {
-        const insertRecord = new models.totalRevenueModel(data)
-        insertRecord.save()
+        switch (modelName) {
+            case 'totalRevenueModel':
+                var insertRecord = new models.totalRevenueModel(data)
+                insertRecord.save()
+                break
+            case 'quarterlyRevenueModel':
+                var insertRecord = new models.quarterlyRevenueModel(data)
+                insertRecord.save()
+                break
+            default:
+                break;
+            }
+            
     } catch (err:any){
         console.log("Error inserting document :",err.message);
     }
@@ -31,8 +63,16 @@ const insertDocument = (data:{})=>{
 
 }
 
-const deleteDocument = async (_id:ObjectId)=>{
-    await models.totalRevenueModel.deleteOne({_id})
+const deleteDocument = async (_id:ObjectId,modelName:'totalRevenueModel' | 'quarterlyRevenueModel')=>{
+    switch (modelName) {
+        case 'totalRevenueModel':
+            await models.totalRevenueModel.deleteOne({_id})
+            break;
+        case 'quarterlyRevenueModel':
+            await models.quarterlyRevenueModel.deleteOne({_id})
+        default:
+            break;
+    }
 }
 
 export {getTotalRevDataFromMongo,updateDocument,insertDocument,deleteDocument}
