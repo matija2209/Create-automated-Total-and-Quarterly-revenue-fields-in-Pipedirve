@@ -4,7 +4,7 @@ import mongoose ,{ Schema, model, connect, Model, mongo } from 'mongoose';
 import { delay } from './utils/helpers';
 import {getTotalRevDataFromMongo} from './utils/db'
 import { type } from 'os';
-import {insertDocument,updateDocument} from './utils/db'
+import {insertDocument,updateDocument,deleteDocument} from './utils/db'
 var moment = require('moment')
 
 const dbURI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0.nwtcd.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`
@@ -89,6 +89,20 @@ const getOrgsThatNeedsUpdating = (dataFromMongo:any,totalRevenue:any)=>{
     })
 }
 
+const processOutdatedEntries = async (mongoData:any)=>{
+    const toRemove = mongoData.filter((record:any)=>{
+        return moment(mongoData[0].updatedAt) < moment().subtract(30,'d')
+    })
+    for (const doc of toRemove){
+        await deleteDocument(doc._id)
+        await editPipedriveObjects({endpoint:'organizations',method:'PUT',pId:doc.orgId,data:{
+            '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':0
+            }
+        })
+        await delay(100)
+    }
+}
+
 const main = async () =>{
     const deals = await getPipedriveObjects({
         endpoint:'deals',
@@ -103,6 +117,7 @@ const main = async () =>{
     const totalRevenue = getTotalRevPerOrgId(deals)
     
     const dataFromMongo = await getTotalRevDataFromMongo()
+    await processOutdatedEntries(dataFromMongo)
     const {existingOrgsThatNeedUpdate,newEntriesToBeSavedInMongo} = getOrgsThatNeedsUpdating(dataFromMongo,totalRevenue)
     
     // Insert new documents

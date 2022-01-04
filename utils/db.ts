@@ -31,4 +31,8 @@ const insertDocument = (data:{})=>{
 
 }
 
-export {getTotalRevDataFromMongo,updateDocument,insertDocument}
+const deleteDocument = async (_id:ObjectId)=>{
+    await models.totalRevenueModel.deleteOne({_id})
+}
+
+export {getTotalRevDataFromMongo,updateDocument,insertDocument,deleteDocument}
