@@ -17,7 +17,7 @@ const getTotalRevDataFromMongo = async (filterType:filterType)=>{
 }
 
 
-const updateDocument = async (_id:ObjectId,data:{},modelName:'totalRevenueModel' | 'quarterlyRevenueModel'):Promise<void> =>{
+const updateDocument = async (_id:ObjectId,data:{},modelName:filterType):Promise<void> =>{
     const conditions = {_id}
     const dateToUpdate =  {
         $set: {...data}
@@ -41,7 +41,7 @@ const updateDocument = async (_id:ObjectId,data:{},modelName:'totalRevenueModel'
     }
 }
 
-const insertDocument = (data:{},modelName:'totalRevenueModel' | 'quarterlyRevenueModel')=>{
+const insertDocument = (data:{},modelName:filterType)=>{
     try {
         switch (modelName) {
             case 'totalRevenueModel':
@@ -63,7 +63,7 @@ const insertDocument = (data:{},modelName:'totalRevenueModel' | 'quarterlyRevenu
 
 }
 
-const deleteDocument = async (_id:ObjectId,modelName:'totalRevenueModel' | 'quarterlyRevenueModel')=>{
+const deleteDocument = async (_id:ObjectId,modelName:filterType)=>{
     switch (modelName) {
         case 'totalRevenueModel':
             await models.totalRevenueModel.deleteOne({_id})

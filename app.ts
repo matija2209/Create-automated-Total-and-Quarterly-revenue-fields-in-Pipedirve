@@ -3,7 +3,6 @@ require('dotenv').config()
 import mongoose ,{ Schema, model, connect, Model, mongo } from 'mongoose';
 import { delay } from './utils/helpers';
 import {getTotalRevDataFromMongo} from './utils/db'
-import { type } from 'os';
 import {insertDocument,updateDocument,deleteDocument} from './utils/db'
 var moment = require('moment')
 
@@ -78,7 +77,7 @@ const getOrgsThatNeedsUpdating = (dataFromMongo:any,totalRevenue:any)=>{
         const isMatch = matchedOrg?._id ? true : false
 
         if (isMatch) {
-            if (matchedOrg.value === org.value) return
+            if (matchedOrg.value === org.value) return // Skip if the value between MongoDb and Pipedrive (new) doesn't differ
             return {
                 ...org,
                 id : matchedOrg._id
@@ -87,7 +86,7 @@ const getOrgsThatNeedsUpdating = (dataFromMongo:any,totalRevenue:any)=>{
         }
         newEntriesToBeSavedInMongo.push({
             ...org
-        })
+        }) // No match with MongoDb, it'll add new entry
         return
     })
     .filter((org:any)=>org)
@@ -166,21 +165,17 @@ const main = async () =>{
             status:"won"
         }
     })
-    debugger
     const toDo:Array<filterType> = [
         'quarterlyRevenueModel',
         'totalRevenueModel'
     ]
     for (const field of toDo){
-        const totalRevenue = getTotalRevPerOrgId(deals,field)
+        const newValuesPerOrg = getTotalRevPerOrgId(deals,field)
         const dataFromMongo = await getTotalRevDataFromMongo(field)
         await processOutdatedEntries(dataFromMongo)
-        const {existingOrgsThatNeedUpdate,newEntriesToBeSavedInMongo} = getOrgsThatNeedsUpdating(dataFromMongo,totalRevenue)
-        debugger
-
+        const {existingOrgsThatNeedUpdate,newEntriesToBeSavedInMongo} = getOrgsThatNeedsUpdating(dataFromMongo,newValuesPerOrg)
         // Insert new documents
         createNewEntries(newEntriesToBeSavedInMongo,field)
-    
         // Update existing documents
         updateEntries(existingOrgsThatNeedUpdate,field)
     }
