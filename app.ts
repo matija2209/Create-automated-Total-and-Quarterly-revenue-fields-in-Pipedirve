@@ -6,7 +6,7 @@ import {getTotalRevDataFromMongo} from './utils/db'
 import {insertDocument,updateDocument,deleteDocument} from './utils/db'
 var moment = require('moment')
 
-const dbURI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0.nwtcd.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`
+const dbURI = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0.nwtcd.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`
 mongoose.connect(dbURI)
 
 export type filterType = 'totalRevenueModel' | 'quarterlyRevenueModel'
@@ -50,7 +50,7 @@ const sumDealsValuesPerOrgId = (deals:[{orgId:String}])=>{
             })
         } catch (err:any) {
             const message = err.message
-            debugger
+            console.log(message);  
         }
     },[])
     .filter((org:any)=>org.orgId)
@@ -104,7 +104,7 @@ const processOutdatedEntries = async (mongoData:any)=>{
     for (const doc of toRemove){
         await deleteDocument(doc._id,'totalRevenueModel')
         await editPipedriveObjects({endpoint:'organizations',method:'PUT',pId:doc.orgId,data:{
-            '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':0
+            '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':0 // Pipedrive API field for Total Revenue - CHANGE TO YOURS!!!
             }
         })
         await delay(100)
@@ -116,7 +116,7 @@ const updatePdField = async (org:any,filterType:filterType)=>{
     switch (filterType) {
         case 'totalRevenueModel':
             await editPipedriveObjects({endpoint:'organizations',method:'PUT',pId:org.orgId,data:{
-                '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':org.value
+                '7ef8c3b4cc96236b7d239fdb24b5d49171852d45':org.value // Pipedrive API field for Quarterly Revenue - CHANGE TO YOURS!!!
                 }
             })
             break;
@@ -134,7 +134,6 @@ const updatePdField = async (org:any,filterType:filterType)=>{
 }
 
 const createNewEntries = async (newEntriesToBeSavedInMongo:any,filterType:filterType)=>{
-    
     for (const org of newEntriesToBeSavedInMongo){
         updatePdField(org,filterType)
         insertDocument(org,filterType)

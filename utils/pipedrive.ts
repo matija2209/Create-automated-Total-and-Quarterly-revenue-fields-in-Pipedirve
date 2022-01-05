@@ -27,7 +27,7 @@ export const editPipedriveObjects = async ({...obj}:editPipedriveObject):Promise
             start:0,
             sort:'add_time DESC'
         },
-        url : `https://harmony.pipedrive.com/api/v1/${obj.endpoint}/${obj.pId}`,
+        url : `https://${process.env.PD_ACCOUNT}.pipedrive.com/api/v1/${obj.endpoint}/${obj.pId}`,
         method:obj.method,
         timeout: 60000, //optional,
     };
@@ -45,7 +45,7 @@ export const getPipedriveObjects = async ({...obj}:fetchPipedriveObjects):Promis
             start:0,
             sort:'add_time DESC'
         },
-        url : `https://harmony.pipedrive.com/api/v1/${obj.endpoint}`,
+        url : `https://${process.env.PD_ACCOUNT}.pipedrive.com/api/v1/${obj.endpoint}`,
         method:obj.method,
         timeout: 60000, //optional,
     };
@@ -83,6 +83,6 @@ export const getPipedriveObjects = async ({...obj}:fetchPipedriveObjects):Promis
     }
     catch (err:any) {
         const message = err.message
-        throw new Error(`failed fetching ${obj.endpoint}`)
+        throw new Error(`failed fetching ${obj.endpoint} \n${message}`)
     }
 }
