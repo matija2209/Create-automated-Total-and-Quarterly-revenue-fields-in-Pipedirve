@@ -7,8 +7,10 @@ type fetchPipedriveObjects = {
     limit? : number,
     method : 'POST'|'GET'|'PUT'|'DELETE',
     term? : string,
-    params : {} | null,
-    data? : {}
+    params? : {} | null,
+    data? : {},
+    bulkAction : false | true,
+    id? : number
 }
 
 type editPipedriveObject = {
@@ -20,7 +22,8 @@ type editPipedriveObject = {
 }
 
 export const editPipedriveObjects = async ({...obj}:editPipedriveObject):Promise<Array<any>|any> => {
-    var options:AxiosRequestConfig = {
+    await delay(50)
+    const options:AxiosRequestConfig = {
         headers: { "Content-Type": "application/json" },
         params : {
             api_token : process.env.PIPEDRIVE_API_KEY,
@@ -31,33 +34,51 @@ export const editPipedriveObjects = async ({...obj}:editPipedriveObject):Promise
         method:obj.method,
         timeout: 60000, //optional,
     };
+    try {
+        if (obj.method !== 'GET'){
+            options.data = obj.data
+            const request:AxiosResponse = await axios(options);
+            return request
+        }
+    } catch (err:any) {
+        const message = err.message
+        throw Error(message)
+    }
+    
 
-    options.data = obj.data
-    const request:AxiosResponse = await axios(options);
-    return request
 }
 
 export const getPipedriveObjects = async ({...obj}:fetchPipedriveObjects):Promise<Array<any>|any> => {
-    var options:AxiosRequestConfig = {
+    let options:AxiosRequestConfig = {
         headers: { "Content-Type": "application/json" },
         params : {
             api_token : process.env.PIPEDRIVE_API_KEY,
             start:0,
-            sort:'add_time DESC'
+            sort:'add_time DESC',
         },
-        url : `https://${process.env.PD_ACCOUNT}.pipedrive.com/api/v1/${obj.endpoint}`,
         method:obj.method,
         timeout: 60000, //optional,
     };
 
+    if (obj.bulkAction) {
+        options.url = `https://${process.env.PD_ACCOUNT}.pipedrive.com/api/v1/${obj.endpoint}`
+    } else {
+        options.url = `https://${process.env.PD_ACCOUNT}.pipedrive.com/api/v1/${obj.endpoint}/${obj.id}`
+    }
     if (obj.method !== 'GET'){
         options.data = obj.data
         const request:AxiosResponse = await axios(options);
         return request
     }
+    if (obj.bulkAction === false && obj.method === 'GET') {
+        options.data = obj.data
+        const request:AxiosResponse = await axios(options);
+        return request.data['data']
+    }
     if (obj.params){
         const newParams = {
             ...options.params,
+            
             ...obj.params
         }
         options.params = newParams

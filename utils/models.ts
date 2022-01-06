@@ -33,8 +33,26 @@ const quarterlyRevenueSchema = new Schema({
 { timestamps: true }
 )
 
+const dealCountrySchema = new Schema({
+    pId:{
+        type:Number,
+        required:true,
+        unique:true
+    },
+    country:{
+        type:String,
+    },
+    orgId:{
+        type:Number,
+        unique:false
+    }
+},
+{ timestamps: true }
+)
+
 const totalRevenueModel = mongoose.model('totalRev',totalRevenueSchema)
 const quarterlyRevenueModel = mongoose.model('quarterlyRev',quarterlyRevenueSchema)
+const dealCountryModel = mongoose.model('dealCountry',dealCountrySchema)
 
 
-module.exports = {totalRevenueModel,quarterlyRevenueModel}
+module.exports = {totalRevenueModel,quarterlyRevenueModel,dealCountryModel}

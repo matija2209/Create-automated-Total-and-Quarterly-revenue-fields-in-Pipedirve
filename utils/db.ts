@@ -3,17 +3,25 @@ import {filterType} from "../app"
 const models = require('./models')
 const ObjectId = require('mongoose').Types.ObjectId; 
 
-const getTotalRevDataFromMongo = async (filterType:filterType)=>{
+const getActionDataFromMongo = async (filterType:filterType)=>{
+    let results 
     switch (filterType) {
         case 'totalRevenueModel':
             const tRev = await models.totalRevenueModel.find({}).exec();
-            return tRev.map((de:any)=>de.toObject())
+            results = tRev.map((de:any)=>de.toObject())
         case 'quarterlyRevenueModel':
             const qRevenue = await models.quarterlyRevenueModel.find({}).exec();
-            return qRevenue.map((de:any)=>de.toObject())
+            results = qRevenue.map((de:any)=>de.toObject())
+        case 'dealCountryModel':
+            const dealCountry = await models.dealCountryModel.find({}).exec();
+            results = dealCountry.map((de:any)=>de.toObject())
         default:
             break;
     }
+    if (results) {
+        return results
+    } 
+    return []
 }
 
 
@@ -36,22 +44,31 @@ const updateDocument = async (_id:ObjectId,data:{},modelName:filterType):Promise
                 strict:false
                 }
             )
+        case 'dealCountryModel':
+            await models.dealCountryModel.updateOne(conditions,dateToUpdate,{
+                upsert:false,
+                strict:false
+                }
+            )
         default:
             break;
     }
 }
 
-const insertDocument = (data:{},modelName:filterType)=>{
+const insertDocument = async (data:{},modelName:filterType)=>{
     try {
         switch (modelName) {
             case 'totalRevenueModel':
-                var insertRecord = new models.totalRevenueModel(data)
+                var insertRecord = await new models.totalRevenueModel(data)
                 insertRecord.save()
                 break
             case 'quarterlyRevenueModel':
-                var insertRecord = new models.quarterlyRevenueModel(data)
+                var insertRecord = await new models.quarterlyRevenueModel(data)
                 insertRecord.save()
                 break
+            case 'dealCountryModel':
+                var insertRecord = await new models.dealCountryModel(data)
+                insertRecord.save()
             default:
                 break;
             }
@@ -70,9 +87,12 @@ const deleteDocument = async (_id:ObjectId,modelName:filterType)=>{
             break;
         case 'quarterlyRevenueModel':
             await models.quarterlyRevenueModel.deleteOne({_id})
+        case 'dealCountryModel':
+            var insertRecord = new models.deleteOne({_id})
+            insertRecord.save()
         default:
             break;
     }
 }
 
-export {getTotalRevDataFromMongo,updateDocument,insertDocument,deleteDocument}
+export {getActionDataFromMongo,updateDocument,insertDocument,deleteDocument}
