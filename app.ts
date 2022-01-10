@@ -92,7 +92,7 @@ const findOrgsWithMissingOrLackingValue = (dataFromMongo:any,totalRevenue:any)=>
         return
     })
     .filter((org:any)=>org)
-    
+
     return ({
         existingOrgsThatNeedUpdate,
         newEntriesToBeSavedInMongo
@@ -144,7 +144,7 @@ const updatePdField = async (org:any,filterType:filterType)=>{
     } catch (err:any) {
         const message = err.message
     }
-    console.log(`- updated org ${org.orgId} total revenue with value ${org.value}EUR`);
+    console.log(`- updated org ${org.orgId} ${filterType} with value ${org.value}EUR`);
     return
 }
 
@@ -191,11 +191,12 @@ const addCountryToObj = async (deals:Array<{}>)=>{
 
 
 const processRevenueFields = async () =>{
-    const deals = await getPipedriveObjects({endpoint:'deals',method:'GET',limit:500,params:{sort:"won_time DESC",status:"won"},bulkAction:true})
+    const deals = await getPipedriveObjects({endpoint:'deals',method:'GET',limit:4000,params:{sort:"won_time DESC",status:"won"},bulkAction:true})
     const actions:Array<filterType> = ['quarterlyRevenueModel','totalRevenueModel']
     for (const action of actions){
+        console.log(`Starting ${action}...`);  
         const storedDataPerAction = await getActionDataFromMongo(action)
-        await processOutdatedEntries(storedDataPerAction)
+        // await processOutdatedEntries(storedDataPerAction)
         const newDataPerAction = findRevenuePerOrg(deals,action)
         const {existingOrgsThatNeedUpdate,newEntriesToBeSavedInMongo} = findOrgsWithMissingOrLackingValue(storedDataPerAction,newDataPerAction)
         // Insert new documents
@@ -203,12 +204,13 @@ const processRevenueFields = async () =>{
         // Update existing documents
         await updateEntries(existingOrgsThatNeedUpdate,action)
     }
+    console.log("Finished with processRevenueFields");    
     return
 }
 const processDealFields = async ()=>{
-    const deals = await getPipedriveObjects({endpoint:'deals',method:'GET',limit:3000,params:{sort:"won_time DESC",status:"won"},bulkAction:true})
+    const deals = await getPipedriveObjects({endpoint:'deals',method:'GET',limit:2000,params:{sort:"won_time DESC",status:"won"},bulkAction:true})
     const alreadyProcessedData = await getActionDataFromMongo('dealCountryModel')
-    
+    console.log(`Starting processDealFields...`);  
     const dataNotPresentInMongo = deals.filter((deal:any)=>{
         const matchedProduct = alreadyProcessedData.find((document:any)=>document.pId === deal.id)
         const isPresentInExistingData = matchedProduct?.pId ? true : false
@@ -220,20 +222,10 @@ const processDealFields = async ()=>{
     await createNewEntries(newDataPerAction,'dealCountryModel')
 }
 
-function run_async () {
-    // processRevenueFields().then(()=>{
-    //     console.log("Finished Orgs fields")
-    //     process.exit()
-    // }, run_async.bind(null)).catch((err)=>{
-    //     console.log(err);
-    // })
-    processDealFields().then(()=>{
-        console.log("Finished Deals fields")
-        process.exit()
-    }, run_async.bind(null)).catch((err)=>{
-          console.log(err);
-    })
-    
+const run_async = async ()=>{
+    await processRevenueFields()
+    await processDealFields()
+    process.exit()
 }
 
 run_async()

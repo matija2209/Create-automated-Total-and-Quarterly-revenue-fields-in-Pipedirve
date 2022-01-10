@@ -9,12 +9,15 @@ const getActionDataFromMongo = async (filterType:filterType)=>{
         case 'totalRevenueModel':
             const tRev = await models.totalRevenueModel.find({}).exec();
             results = tRev.map((de:any)=>de.toObject())
+            break
         case 'quarterlyRevenueModel':
             const qRevenue = await models.quarterlyRevenueModel.find({}).exec();
             results = qRevenue.map((de:any)=>de.toObject())
+            break
         case 'dealCountryModel':
             const dealCountry = await models.dealCountryModel.find({}).exec();
             results = dealCountry.map((de:any)=>de.toObject())
+            break
         default:
             break;
     }
@@ -44,12 +47,14 @@ const updateDocument = async (_id:ObjectId,data:{},modelName:filterType):Promise
                 strict:false
                 }
             )
+            break
         case 'dealCountryModel':
             await models.dealCountryModel.updateOne(conditions,dateToUpdate,{
                 upsert:false,
                 strict:false
                 }
             )
+            break
         default:
             break;
     }
@@ -87,9 +92,11 @@ const deleteDocument = async (_id:ObjectId,modelName:filterType)=>{
             break;
         case 'quarterlyRevenueModel':
             await models.quarterlyRevenueModel.deleteOne({_id})
+            break
         case 'dealCountryModel':
             var insertRecord = new models.deleteOne({_id})
             insertRecord.save()
+            break
         default:
             break;
     }
